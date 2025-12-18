@@ -50,6 +50,7 @@
 #include "access/xlog.h"
 #include "access/xloginsert.h"
 #include "access/xlogutils.h"
+#include "affinity/affinity.h"
 #include "catalog/catalog.h"
 #include "catalog/pg_database.h"
 #include "catalog/pg_database_d.h"
@@ -1935,6 +1936,8 @@ heap_insert(Relation relation, HeapTuple tup, CommandId cid,
 	 * into the relation; tup is the caller's original untoasted data.
 	 */
 	heaptup = heap_prepare_insert(relation, tup, xid, cid, options);
+
+	affinity_value_t affinity_value = get_affinity_value(relation, heaptup);
 
 	/*
 	 * Find buffer to insert this tuple into.  If the page is all visible,

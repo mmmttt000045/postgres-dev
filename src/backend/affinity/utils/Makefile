@@ -1,18 +1,17 @@
 #-------------------------------------------------------------------------
 #
-# Makefile--
-#    Makefile for backend/affinty
+# Makefile for backend/affinity/utils
 #
 # IDENTIFICATION
-#    src/backend/affinty/Makefile
+#    src/backend/affinity/utils/Makefile
 #
 #-------------------------------------------------------------------------
 
-subdir = src/backend/affinty
-top_builddir = ../../..
+subdir = src/backend/affinity/utils
+top_builddir = ../../../..
 include $(top_builddir)/src/Makefile.global
 
-OBJS = affinty.o
+OBJS = hash64.o
 
 include $(top_srcdir)/src/backend/common.mk
 

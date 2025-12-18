@@ -28,6 +28,7 @@
 #include "access/tableam.h"
 #include "access/xact.h"
 #include "access/xlog.h"
+#include "affinity/affinity.h"
 #include "catalog/catalog.h"
 #include "catalog/indexing.h"
 #include "catalog/namespace.h"
@@ -588,6 +589,8 @@ InitPostgres(const char *in_dbname, Oid dboid, const char *username,
 	char		dbname[NAMEDATALEN];
 
 	elog(DEBUG3, "InitPostgres");
+
+	init_partition_map();
 
 	/*
 	 * Add my PGPROC struct to the ProcArray.

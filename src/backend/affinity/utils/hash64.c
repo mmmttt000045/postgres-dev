@@ -1,19 +1,14 @@
+#include <stdbool.h> // 用于 bool 类型
+#include <stdint.h>  // 用于 int64_t, int8_t
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdint.h>  // 用于 int64_t, int8_t
-#include <stdbool.h> // 用于 bool 类型
 
-/* ==========================================
- * 数据结构定义
- * ========================================== */
-typedef int64_t key_t;
-typedef uint64_t ukey_t;
-typedef uint32_t value_t;
+#include "affinity/utils/hash64.h"
 
 // 哈希表节点
 typedef struct Entry {
-    key_t key;
-    value_t value;
+    affinity_key_t key;
+    affinity_value_t value;
     struct Entry *next; // 链表指针，用于解决哈希冲突
 } Entry;
 
@@ -30,8 +25,8 @@ typedef struct HashTable {
 
 // 哈希函数：使用混合位运算优化哈希分布
 // 基于 splitmix64 算法，确保更均匀的分布
-static inline unsigned int hash(key_t key, size_t size) {
-    ukey_t h = key;
+static inline unsigned int hash(affinity_key_t key, size_t size) {
+    affinity_ukey_t h = key;
     h ^= h >> 33;
     h *= 0xff51afd7ed558ccdULL;
     h ^= h >> 33;
@@ -94,14 +89,18 @@ static void ht_resize(HashTable *ht, size_t new_size) {
 
 // 2. 插入或更新 (Insert/Update)
 // 自动扩容：当负载因子超过 0.75 时，扩大为原来的 2 倍
-void ht_put(HashTable *ht, key_t key, value_t value) {
+void ht_put(HashTable *ht, affinity_key_t key, affinity_value_t value) {
+    unsigned int index;
+    Entry *current;
+    Entry *new_entry;
+
     // 检查是否需要扩容（负载因子 > 0.75）
-    if ((double) ht->count / ht->size > 0.75) {
+    if (ht_load_factor(ht) > 0.75) {
         ht_resize(ht, ht->size * 2);
     }
 
-    unsigned int index = hash(key, ht->size);
-    Entry *current = ht->buckets[index];
+    index = hash(key, ht->size);
+    current = ht->buckets[index];
 
     // 遍历链表，查看 Key 是否已存在
     while (current != NULL) {
@@ -113,7 +112,7 @@ void ht_put(HashTable *ht, key_t key, value_t value) {
     }
 
     // 不存在，使用头插法插入新节点
-    Entry *new_entry = (Entry *) malloc(sizeof(Entry));
+    new_entry = (Entry *) malloc(sizeof(Entry));
     if (!new_entry) {
         fprintf(stderr, "Error: Malloc failed in ht_put\n");
         return;
@@ -128,7 +127,7 @@ void ht_put(HashTable *ht, key_t key, value_t value) {
 // 3. 查找 (Get)
 // 返回 true 表示找到，通过 out_value 传出值
 // 返回 false 表示未找到
-bool ht_get(HashTable *ht, key_t key, value_t *out_value) {
+bool ht_get(HashTable *ht, affinity_key_t key, affinity_value_t *out_value) {
     unsigned int index = hash(key, ht->size);
     Entry *current = ht->buckets[index];
 
@@ -144,7 +143,7 @@ bool ht_get(HashTable *ht, key_t key, value_t *out_value) {
     return false;
 }
 
-value_t ht_get_value(HashTable *ht, key_t key) {
+affinity_value_t ht_get_value(HashTable *ht, affinity_key_t key) {
     unsigned int index = hash(key, ht->size);
     Entry *current = ht->buckets[index];
 
@@ -158,7 +157,7 @@ value_t ht_get_value(HashTable *ht, key_t key) {
 }
 
 // 3a. 检查键是否存在 (Contains)
-bool ht_contains(HashTable *ht, key_t key) {
+bool ht_contains(HashTable *ht, affinity_key_t key) {
     return ht_get(ht, key, NULL);
 }
 
@@ -174,7 +173,7 @@ double ht_load_factor(HashTable *ht) {
 
 // 4. 删除 (Remove)
 // 返回 true 表示删除成功，false 表示未找到
-bool ht_remove(HashTable *ht, key_t key) {
+bool ht_remove(HashTable *ht, affinity_key_t key) {
     unsigned int index = hash(key, ht->size);
     Entry *current = ht->buckets[index];
     Entry *prev = NULL;
@@ -249,19 +248,19 @@ int main() {
     printf("当前元素数: %zu, 负载因子: %.2f\n", ht_size(map), ht_load_factor(map));
 
     // 触发扩容：插入更多元素
-    for (key_t i = 0; i < 10; i++) {
-        ht_put(map, i * 1000, (value_t)(i % 100));
+    for (affinity_key_t i = 0; i < 10; i++) {
+        ht_put(map, i * 1000, (affinity_value_t)(i % 100));
     }
     printf("\n插入更多元素后（应触发自动扩容）:\n");
     printf("当前元素数: %zu, 负载因子: %.2f\n", ht_size(map), ht_load_factor(map));
 
     // 2. 查询数据
-    value_t val;
-    key_t keys_to_find[] = {1001, 2002, 99999999999, 8888}; // 8888 是不存在的
+    affinity_value_t val;
+    affinity_key_t keys_to_find[] = {1001, 2002, 99999999999, 8888}; // 8888 是不存在的
 
     printf("\n--- 查询测试 ---\n");
     for (int i = 0; i < 4; i++) {
-        key_t k = keys_to_find[i];
+        affinity_key_t k = keys_to_find[i];
         if (ht_get(map, k, &val)) {
             printf("Key [%ld] => Value [%d]\n", (long)k, val);
         } else {
